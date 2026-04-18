@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Analysis Agent Crew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #FAF7F2;
+            color: #3D2B1F;
+            min-height: 100vh;
+        }
+
+        /* ── Navbar ── */
+        .navbar {
+            background: #F5EFE6;
+            border-bottom: 1px solid #E8DDD0;
+            padding: 14px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .brand { font-size: 15px; font-weight: 700; color: #5C4A32; }
+        .brand span { color: #A0785A; }
+        .nav-tag { font-size: 11px; color: #B0A090; }
+
+        /* ── Two column layout ── */
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: calc(100vh - 52px);
+        }
+
+        /* ── Left panel ── */
+        .left {
+            padding: 48px 40px;
+            border-right: 1px solid #E8DDD0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Typewriter heading */
+        .hero-heading {
+            font-size: 26px;
+            font-weight: 700;
+            color: #3D2B1F;
+            line-height: 1.35;
+            margin-bottom: 10px;
+            min-height: 72px;
+        }
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: #A0785A;
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink 0.75s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .hero-sub {
+            font-size: 13px;
+            color: #9C8070;
+            line-height: 1.7;
+            margin-bottom: 28px;
+            max-width: 380px;
+        }
+
+        /* ── Mode tabs ── */
+        .tabs {
+            display: flex;
+            background: #EDE5D8;
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 20px;
+            gap: 3px;
+        }
+        .tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #9C8070;
+            cursor: pointer;
+            border: none;
+            background: none;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: #FFFFFF;
+            color: #5C4A32;
+            font-weight: 600;
+            border: 0.5px solid #E0D5C8;
+        }
+
+        /* ── Inputs ── */
+        .field-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #9C8070;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+        .field-input {
+            width: 100%;
+            padding: 10px 13px;
+            background: #FFFFFF;
+            border: 1px solid #E0D5C8;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #3D2B1F;
+            margin-bottom: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .field-input:focus { border-color: #A0785A; }
+        .field-input::placeholder { color: #C4B5A5; }
+
+        /* ── Run button ── */
+        .run-btn {
+            width: 100%;
+            padding: 11px;
+            background: #A0785A;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 28px;
+        }
+        .run-btn:hover { background: #8B6347; }
+        .run-btn:disabled { background: #D4C4B5; cursor: not-allowed; }
+
+        /* ── Feature list ── */
+        .features { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
+        .feat { display: flex; align-items: flex-start; gap: 10px; }
+        .feat-icon {
+            width: 30px; height: 30px;
+            border-radius: 6px;
+            background: #EDE5D8;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .feat h4 { font-size: 12px; font-weight: 600; color: #5C4A32; margin-bottom: 2px; }
+        .feat p  { font-size: 11px; color: #9C8070; line-height: 1.5; }
+
+        /* ── Right panel ── */
+        .right {
+            padding: 48px 40px;
+            background: #FDF9F4;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Empty state */
+        .empty-state {
+            margin: auto;
+            text-align: center;
+            color: #C4B5A5;
+        }
+        .empty-icon {
+            width: 52px; height: 52px;
+            border-radius: 12px;
+            background: #EDE5D8;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 14px;
+        }
+        .empty-state h3 { font-size: 14px; font-weight: 600; color: #B0A090; margin-bottom: 6px; }
+        .empty-state p  { font-size: 12px; line-height: 1.6; }
+
+        /* Result area */
+        .result-area { display: none; }
+        .result-title {
+            font-size: 16px; font-weight: 700; color: #3D2B1F;
+            margin-bottom: 16px;
+        }
+
+        /* Rec pills */
+        .pills {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px; margin-bottom: 18px;
+        }
+        .pill { border-radius: 8px; padding: 14px; text-align: center; }
+        .pill-lbl {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            margin-bottom: 5px; opacity: 0.75;
+        }
+        .pill-val { font-size: 20px; font-weight: 800; }
+        .p-buy  { background: #D4EDD8; } .p-buy  .pill-lbl { color: #2E6B38; } .p-buy  .pill-val { color: #1A4D24; }
+        .p-sell { background: #F5D5D5; } .p-sell .pill-lbl { color: #8B2020; } .p-sell .pill-val { color: #6B1515; }
+        .p-hold { background: #FAE8CC; } .p-hold .pill-lbl { color: #8A5A1A; } .p-hold .pill-val { color: #6B4210; }
+        .p-high { background: #F5D5D5; } .p-high .pill-lbl { color: #8B2020; } .p-high .pill-val { color: #6B1515; }
+        .p-med  { background: #FAE8CC; } .p-med  .pill-lbl { color: #8A5A1A; } .p-med  .pill-val { color: #6B4210; }
+        .p-low  { background: #D4EDD8; } .p-low  .pill-lbl { color: #2E6B38; } .p-low  .pill-val { color: #1A4D24; }
+
+        /* Progress */
+        .prog-track {
+            background: #EDE5D8; border-radius: 999px;
+            height: 5px; margin-bottom: 18px; overflow: hidden;
+        }
+        .prog-fill {
+            height: 100%; background: #A0785A;
+            border-radius: 999px; width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Steps */
+        .steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .step  { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+        .sdot  {
+            width: 20px; height: 20px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 700; flex-shrink: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        .sdot-idle { background: #EDE5D8; color: #B0A090; }
+        .sdot-active { background: #A0785A; color: #FFFFFF; }
+        .sdot-done  { background: #D4EDD8; color: #1A4D24; }
+        .stext-idle   { color: #C4B5A5; }
+        .stext-active { color: #3D2B1F; font-weight: 600; }
+        .stext-done   { color: #5C4A32; }
+
+        /* Typewriter rolling text for steps */
+        .rolling-text { display: inline; }
+
+        /* Download button */
+        .dl-btn {
+            width: 100%; padding: 11px;
+            background: #D4EDD8; color: #1A4D24;
+            border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer; text-decoration: none;
+            display: block; text-align: center;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+        .dl-btn:hover { background: #BFE0C4; }
+
+        /* View analysis toggle */
+        .toggle-btn {
+            width: 100%; padding: 9px;
+            background: none; color: #9C8070;
+            border: 1px solid #E0D5C8;
+            border-radius: 8px; font-size: 12px;
+            cursor: pointer; margin-bottom: 10px;
+        }
+        .analysis-box {
+            display: none;
+            background: #FFFFFF; border: 1px solid #E0D5C8;
+            border-radius: 8px; padding: 14px;
+            font-size: 11px; color: #7A6555;
+            line-height: 1.8; white-space: pre-wrap;
+            max-height: 220px; overflow-y: auto;
+        }
+
+        /* Error */
+        .error-box {
+            display: none;
+            background: #FDF0F0; border: 1px solid #F0C4C4;
+            border-radius: 8px; padding: 10px 14px;
+            color: #8B2020; font-size: 12px; margin-bottom: 12px;
+        }
+
+        /* Comparison cards */
+        .comp-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+        .comp-card {
+            background: #FFFFFF; border: 1px solid #E0D5C8;
+            border-radius: 8px; padding: 12px 16px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .comp-ticker { font-size: 15px; font-weight: 800; color: #3D2B1F; }
+        .comp-badges { display: flex; gap: 6px; }
+        .badge {
+            padding: 3px 10px; border-radius: 999px;
+            font-size: 11px; font-weight: 700;
+        }
+        .b-buy  { background: #D4EDD8; color: #1A4D24; }
+        .b-sell { background: #F5D5D5; color: #6B1515; }
+        .b-hold { background: #FAE8CC; color: #6B4210; }
+        .b-high { background: #F5D5D5; color: #6B1515; }
+        .b-med  { background: #FAE8CC; color: #6B4210; }
+        .b-low  { background: #D4EDD8; color: #1A4D24; }
+
+        /* Footer */
+        .footer {
+            text-align: center; padding: 16px;
+            font-size: 11px; color: #C4B5A5;
+            border-top: 1px solid #E8DDD0;
+            background: #F5EFE6;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="brand">&#128200; <span>Financial</span> Agent Crew</div>
+    <div class="nav-tag">Powered by CrewAI + LLaMA 4</div>
+</nav>
+
+<div class="layout">
+
+    <!-- LEFT PANEL -->
+    <div class="left">
+        <div class="hero-heading" id="hero-heading"><span id="typed-text"></span><span class="cursor" id="cursor"></span></div>
+        <p class="hero-sub">Enter any stock ticker and our 5-agent AI crew researches, analyzes, and generates a professional PDF report automatically.</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="setMode('single')">Single stock</button>
+            <button class="tab" onclick="setMode('comparison')">Compare stocks</button>
+        </div>
+
+        <div id="single-field">
+            <div class="field-label">Stock ticker</div>
+            <input class="field-input" id="ticker-input" placeholder="e.g. AAPL, NVDA, TSLA"
+                   maxlength="10" onkeydown="if(event.key==='Enter') runAnalysis()"/>
+        </div>
+
+        <div id="compare-field" style="display:none;">
+            <div class="field-label">Tickers (comma separated)</div>
+            <input class="field-input" id="tickers-input" placeholder="e.g. AAPL, NVDA, TSLA"
+                   onkeydown="if(event.key==='Enter') runAnalysis()"/>
+        </div>
+
+        <div class="error-box" id="error-box"></div>
+
+        <button class="run-btn" id="run-btn" onclick="runAnalysis()">Run analysis</button>
+
+        <div class="features">
+            <div class="feat">
+                <div class="feat-icon">&#129302;</div>
+                <div><h4>5 specialist agents</h4><p>Each agent handles one part of the research workflow</p></div>
+            </div>
+            <div class="feat">
+                <div class="feat-icon">&#128225;</div>
+                <div><h4>Live data</h4><p>Real-time stock prices and web search for latest news</p></div>
+            </div>
+            <div class="feat">
+                <div class="feat-icon">&#128196;</div>
+                <div><h4>PDF report</h4><p>Professional report with charts and investment signal</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right">
+
+        <!-- Empty state -->
+        <div class="empty-state" id="empty-state">
+            <div class="empty-icon">&#128200;</div>
+            <h3>Results appear here</h3>
+            <p>Enter a ticker on the left<br>and click run analysis to start.</p>
+        </div>
+
+        <!-- Result area -->
+        <div class="result-area" id="result-area">
+            <div class="result-title" id="result-title"></div>
+            <div class="pills" id="pills-row"></div>
+            <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+            <div class="steps" id="steps-list">
+                <div class="step" id="step-1"><div class="sdot sdot-idle" id="dot-1">1</div><span class="stext-idle" id="txt-1">Research agent</span></div>
+                <div class="step" id="step-2"><div class="sdot sdot-idle" id="dot-2">2</div><span class="stext-idle" id="txt-2">Financial data agent</span></div>
+                <div class="step" id="step-3"><div class="sdot sdot-idle" id="dot-3">3</div><span class="stext-idle" id="txt-3">Risk analyst</span></div>
+                <div class="step" id="step-4"><div class="sdot sdot-idle" id="dot-4">4</div><span class="stext-idle" id="txt-4">Analysis agent</span></div>
+                <div class="step" id="step-5"><div class="sdot sdot-idle" id="dot-5">5</div><span class="stext-idle" id="txt-5">Report writer</span></div>
+            </div>
+            <div id="done-area" style="display:none;"></div>
+        </div>
+
+    </div>
+</div>
+
+<div class="footer">AI-generated analysis for informational purposes only. Not financial advice.</div>
+
+<script>
+    // ── Typewriter ──────────────────────────────────────────────
+    const lines = [
+        "AI-powered stock analysis in minutes.",
+        "5 agents. Real data. One PDF report.",
+        "Research, analyze, recommend. Automated."
+    ];
+    let li = 0, ci = 0, deleting = false;
+    const typedEl = document.getElementById('typed-text');
+
+    function typeWriter() {
+        const line = lines[li];
+        if (!deleting) {
+            typedEl.textContent = line.slice(0, ci + 1);
+            ci++;
+            if (ci === line.length) {
+                deleting = true;
+                setTimeout(typeWriter, 2200);
+                return;
+            }
+            setTimeout(typeWriter, 48);
+        } else {
+            typedEl.textContent = line.slice(0, ci - 1);
+            ci--;
+            if (ci === 0) {
+                deleting = false;
+                li = (li + 1) % lines.length;
+                setTimeout(typeWriter, 400);
+                return;
+            }
+            setTimeout(typeWriter, 22);
+        }
+    }
+    typeWriter();
+
+    // ── Mode switch ─────────────────────────────────────────────
+    let mode = 'single';
+    function setMode(m) {
+        mode = m;
+        document.querySelectorAll('.tab').forEach((t, i) => {
+            t.classList.toggle('active', (m === 'single' && i === 0) || (m === 'comparison' && i === 1));
+        });
+        document.getElementById('single-field').style.display  = m === 'single'     ? 'block' : 'none';
+        document.getElementById('compare-field').style.display = m === 'comparison' ? 'block' : 'none';
+        resetRight();
+    }
+
+    function resetRight() {
+        document.getElementById('empty-state').style.display  = 'flex';
+        document.getElementById('result-area').style.display  = 'none';
+        document.getElementById('error-box').style.display    = 'none';
+        document.getElementById('run-btn').disabled = false;
+        document.getElementById('run-btn').textContent = 'Run analysis';
+    }
+
+    function showError(msg) {
+        const eb = document.getElementById('error-box');
+        eb.textContent = msg;
+        eb.style.display = 'block';
+        document.getElementById('run-btn').disabled = false;
+        document.getElementById('run-btn').textContent = 'Run analysis';
+        document.getElementById('empty-state').style.display = 'flex';
+        document.getElementById('result-area').style.display = 'none';
+    }
+
+    // ── Step helpers ────────────────────────────────────────────
+    const stepLabels = [
+        'Research agent — searching latest news...',
+        'Financial data agent — pulling live data...',
+        'Risk analyst — assessing risk profile...',
+        'Analysis agent — generating recommendation...',
+        'Report writer — creating PDF...'
+    ];
+    const stepDone = [
+        'Research agent — news found',
+        'Financial data agent — data pulled',
+        'Risk analyst — assessment done',
+        'Analysis agent — recommendation ready',
+        'Report writer — PDF created'
+    ];
+
+    function setStep(n) {
+        for (let i = 1; i <= 5; i++) {
+            const dot  = document.getElementById('dot-' + i);
+            const txt  = document.getElementById('txt-' + i);
+            dot.className = 'sdot ';
+            txt.className = '';
+            if (i < n) {
+                dot.className += 'sdot-done';
+                dot.textContent = '✓';
+                txt.className = 'stext-done';
+                txt.textContent = stepDone[i-1];
+            } else if (i === n) {
+                dot.className += 'sdot-active';
+                dot.textContent = i;
+                txt.className = 'stext-active';
+                rollText(txt, stepLabels[i-1]);
+            } else {
+                dot.className += 'sdot-idle';
+                dot.textContent = i;
+                txt.className = 'stext-idle';
+                txt.textContent = 'Agent ' + i;
+            }
+        }
+        document.getElementById('prog-fill').style.width = ((n - 1) / 5 * 100) + '%';
+    }
+
+    // Rolling letter effect for active step text
+    function rollText(el, text) {
+        let i = 0;
+        el.textContent = '';
+        const iv = setInterval(() => {
+            el.textContent += text[i];
+            i++;
+            if (i >= text.length) clearInterval(iv);
+        }, 28);
+    }
+
+    // ── Rec / risk helpers ──────────────────────────────────────
+    function recClass(r)  { return r==='BUY'?'p-buy':r==='SELL'?'p-sell':'p-hold'; }
+    function riskClass(r) { return r==='HIGH'?'p-high':r==='LOW'?'p-low':'p-med'; }
+    function bRecClass(r) { return r==='BUY'?'b-buy':r==='SELL'?'b-sell':'b-hold'; }
+    function bRskClass(r) { return r==='HIGH'?'b-high':r==='LOW'?'b-low':'b-med'; }
+
+    // ── Main analysis runner ────────────────────────────────────
+    async function runAnalysis() {
+        document.getElementById('error-box').style.display = 'none';
+        const btn = document.getElementById('run-btn');
+        btn.disabled = true;
+        btn.textContent = 'Analyzing...';
+
+        let payload = { mode };
+        if (mode === 'single') {
+            const t = document.getElementById('ticker-input').value.trim().toUpperCase();
+            if (!t) { showError('Please enter a stock ticker.'); return; }
+            payload.ticker = t;
+        } else {
+            const t = document.getElementById('tickers-input').value.trim().toUpperCase();
+            if (!t) { showError('Please enter at least 2 tickers.'); return; }
+            payload.tickers = t;
+        }
+
+        // Show right panel
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('result-area').style.display = 'block';
+        document.getElementById('done-area').style.display   = 'none';
+        document.getElementById('result-title').textContent  = (mode === 'single' ? payload.ticker : payload.tickers) + ' — analyzing';
+
+        document.getElementById('pills-row').innerHTML = '';
+        setStep(1);
+
+        // Animate steps while waiting
+        let stepN = 1;
+        const iv = setInterval(() => {
+            if (stepN < 5) { stepN++; setStep(stepN); }
+        }, 22000);
+
+        try {
+            const res  = await fetch('/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            clearInterval(iv);
+
+            if (!res.ok || data.error) { showError(data.error || 'Something went wrong.'); return; }
+
+            // All steps done
+            for (let i = 1; i <= 5; i++) {
+                const dot = document.getElementById('dot-' + i);
+                const txt = document.getElementById('txt-' + i);
+                dot.className = 'sdot sdot-done';
+                dot.textContent = '✓';
+                txt.className = 'stext-done';
+                txt.textContent = stepDone[i-1];
+            }
+            document.getElementById('prog-fill').style.width = '100%';
+
+            showFinalResult(data);
+
+        } catch(e) {
+            clearInterval(iv);
+            showError('Connection error. Make sure the server is running.');
+        }
+    }
+
+    function showFinalResult(data) {
+        const title = document.getElementById('result-title');
+        const done  = document.getElementById('done-area');
+
+        if (data.rec) {
+            title.textContent = data.ticker + ' — analysis complete';
+            document.getElementById('pills-row').innerHTML = `
+                <div class="pill ${recClass(data.rec)}">
+                    <div class="pill-lbl">Recommendation</div>
+                    <div class="pill-val">${data.rec}</div>
+                </div>
+                <div class="pill ${riskClass(data.risk)}">
+                    <div class="pill-lbl">Risk level</div>
+                    <div class="pill-val">${data.risk}</div>
+                </div>`;
+            done.style.display = 'block';
+            done.innerHTML = `
+                <a href="/download/${data.pdf_file}" class="dl-btn">Download PDF report</a>
+                <button class="toggle-btn" onclick="toggleAnalysis()">View full analysis</button>
+                <div class="analysis-box" id="analysis-box">${data.result}</div>`;
+        } else {
+            title.textContent = 'Comparison complete';
+            document.getElementById('pills-row').innerHTML = '';
+            let cards = '<div class="comp-grid">';
+            for (const [ticker, info] of Object.entries(data.summary)) {
+                cards += `<div class="comp-card">
+                    <div class="comp-ticker">${ticker}</div>
+                    <div class="comp-badges">
+                        <span class="badge ${bRecClass(info.rec)}">${info.rec}</span>
+                        <span class="badge ${bRskClass(info.risk)}">${info.risk} risk</span>
+                    </div>
+                </div>`;
+            }
+            cards += '</div>';
+            done.style.display = 'block';
+            done.innerHTML = cards + `<a href="/download/${data.pdf_file}" class="dl-btn">Download comparison PDF</a>`;
+        }
+
+        document.getElementById('run-btn').disabled = false;
+        document.getElementById('run-btn').textContent = 'Run analysis';
+    }
+
+    function toggleAnalysis() {
+        const b = document.getElementById('analysis-box');
+        b.style.display = b.style.display === 'block' ? 'none' : 'block';
+    }
+</script>
+
+</body>
+</html>

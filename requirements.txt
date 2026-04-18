@@ -1,0 +1,7 @@
+crewai
+crewai-tools
+yfinance
+openai
+python-dotenv
+reportlab
+requests
