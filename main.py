@@ -11,10 +11,14 @@ def validate_ticker(ticker: str) -> bool:
     """Check if a ticker is valid before running the full analysis."""
     try:
         import yfinance as yf
-        info = yf.Ticker(ticker).info
-        return bool(info and (info.get('currentPrice') or info.get('regularMarketPrice')))
+        stock = yf.Ticker(ticker)
+        info  = stock.info
+        if info and (info.get('currentPrice') or info.get('regularMarketPrice') or info.get('symbol')):
+            return True
+        hist = stock.history(period="5d")
+        return not hist.empty
     except:
-        return False
+        return True
 
 def run_analysis(ticker: str) -> str:
     """Run the full agent crew analysis for a single ticker."""
