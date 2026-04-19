@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import requests as req  
 
 load_dotenv()
+os.makedirs('output', exist_ok=True)
 def get_user_currency(request):
     """Detect user currency from their IP location."""
     try:
@@ -47,7 +48,10 @@ def analyze():
 
         result   = run_analysis(ticker)
         pdf_path = generate_pdf(ticker, result, user_currency)
-
+        analysis_store[ticker] = {
+        'result':   result,
+        'pdf_path': pdf_path
+}
 
         analysis_store[ticker] = {
             'result':   result,
@@ -57,14 +61,19 @@ def analyze():
         rec  = 'BUY' if 'BUY' in result.upper() else ('SELL' if 'SELL' in result.upper() else 'HOLD')
         risk = 'HIGH' if 'HIGH RISK' in result.upper() else ('LOW' if 'LOW RISK' in result.upper() else 'MEDIUM')
 
+        import base64
+with open(pdf_path, 'rb') as f:
+    pdf_data = base64.b64encode(f.read()).decode('utf-8')
+
         return jsonify({
-            'success':  True,
-            'ticker':   ticker,
-            'rec':      rec,
-            'risk':     risk,
-            'result':   result,
-            'pdf_file': os.path.basename(pdf_path)
-        })
+    'success':  True,
+    'ticker':   ticker,
+    'rec':      rec,
+    'risk':     risk,
+    'result':   result,
+    'pdf_file': os.path.basename(pdf_path),
+    'pdf_data': pdf_data
+    })
 
     elif mode == 'comparison':
         tickers_raw = data.get('tickers', '')
@@ -93,10 +102,14 @@ def analyze():
                 'risk': 'HIGH' if 'HIGH RISK' in result.upper() else ('LOW' if 'LOW RISK' in result.upper() else 'MEDIUM')
             }
 
+        with open(pdf_path, 'rb') as f:
+    pdf_data = base64.b64encode(f.read()).decode('utf-8')
+
         return jsonify({
-            'success':  True,
-            'summary':  summary,
-            'pdf_file': os.path.basename(pdf_path)
+    'success':  True,
+    'summary':  summary,
+    'pdf_file': os.path.basename(pdf_path),
+    'pdf_data': pdf_data
         })
 
     return jsonify({'error': 'Invalid mode.'}), 400
@@ -105,8 +118,12 @@ def analyze():
 def download(filename):
     path = os.path.join('output', filename)
     if os.path.exists(path):
-        return send_file(path, as_attachment=True)
-    return "File not found", 404
+        return send_file(
+            path,
+            as_attachment=True,
+            download_name=filename
+        )
+    return "File not found — the server may have restarted. Please run the analysis again.", 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

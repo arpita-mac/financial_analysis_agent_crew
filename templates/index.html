@@ -585,7 +585,8 @@
                 </div>`;
             done.style.display = 'block';
             done.innerHTML = `
-                <a href="/download/${data.pdf_file}" class="dl-btn">Download PDF report</a>
+               <a href="data:application/pdf;base64,${data.pdf_data}" 
+                         download="${data.pdf_file}" class="dl-btn">Download PDF report</a>
                 <button class="toggle-btn" onclick="toggleAnalysis()">View full analysis</button>
                 <div class="analysis-box" id="analysis-box">${data.result}</div>`;
         } else {
@@ -603,7 +604,8 @@
             }
             cards += '</div>';
             done.style.display = 'block';
-            done.innerHTML = cards + `<a href="/download/${data.pdf_file}" class="dl-btn">Download comparison PDF</a>`;
+            done.innerHTML = cards + `<a href="data:application/pdf;base64,${data.pdf_data}" 
+            download="${data.pdf_file}" class="dl-btn">Download comparison PDF</a>`;
         }
 
         document.getElementById('run-btn').disabled = false;
