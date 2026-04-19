@@ -2,15 +2,16 @@ from flask import Flask, render_template, request, jsonify, send_file
 from main import run_analysis, validate_ticker
 from pdf_generator import generate_pdf, generate_comparison_pdf
 import os
-import threading
 import time
+import base64
 from dotenv import load_dotenv
-import requests as req  
+import requests as req
 
 load_dotenv()
+
 os.makedirs('output', exist_ok=True)
+
 def get_user_currency(request):
-    """Detect user currency from their IP location."""
     try:
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if ip == '127.0.0.1':
@@ -24,9 +25,6 @@ def get_user_currency(request):
 
 app = Flask(__name__)
 
-app = Flask(__name__)
-
-# Store analysis results temporarily
 analysis_store = {}
 
 @app.route('/')
@@ -35,9 +33,9 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    data   = request.json
-    mode   = data.get('mode')
-    ticker = data.get('ticker', '').upper().strip()
+    data          = request.json
+    mode          = data.get('mode')
+    ticker        = data.get('ticker', '').upper().strip()
     user_currency = get_user_currency(request)
 
     if mode == 'single':
@@ -48,10 +46,6 @@ def analyze():
 
         result   = run_analysis(ticker)
         pdf_path = generate_pdf(ticker, result, user_currency)
-        analysis_store[ticker] = {
-        'result':   result,
-        'pdf_path': pdf_path
-}
 
         analysis_store[ticker] = {
             'result':   result,
@@ -61,23 +55,22 @@ def analyze():
         rec  = 'BUY' if 'BUY' in result.upper() else ('SELL' if 'SELL' in result.upper() else 'HOLD')
         risk = 'HIGH' if 'HIGH RISK' in result.upper() else ('LOW' if 'LOW RISK' in result.upper() else 'MEDIUM')
 
-        import base64
-with open(pdf_path, 'rb') as f:
-    pdf_data = base64.b64encode(f.read()).decode('utf-8')
+        with open(pdf_path, 'rb') as f:
+            pdf_data = base64.b64encode(f.read()).decode('utf-8')
 
         return jsonify({
-    'success':  True,
-    'ticker':   ticker,
-    'rec':      rec,
-    'risk':     risk,
-    'result':   result,
-    'pdf_file': os.path.basename(pdf_path),
-    'pdf_data': pdf_data
-    })
+            'success':  True,
+            'ticker':   ticker,
+            'rec':      rec,
+            'risk':     risk,
+            'result':   result,
+            'pdf_file': os.path.basename(pdf_path),
+            'pdf_data': pdf_data
+        })
 
     elif mode == 'comparison':
-        tickers_raw = data.get('tickers', '')
-        tickers     = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()]
+        tickers_raw   = data.get('tickers', '')
+        tickers       = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()]
 
         if len(tickers) < 2:
             return jsonify({'error': 'Please enter at least 2 tickers.'}), 400
@@ -94,7 +87,6 @@ with open(pdf_path, 'rb') as f:
 
         pdf_path = generate_comparison_pdf(results, user_currency)
 
-
         summary = {}
         for ticker, result in results.items():
             summary[ticker] = {
@@ -103,13 +95,13 @@ with open(pdf_path, 'rb') as f:
             }
 
         with open(pdf_path, 'rb') as f:
-    pdf_data = base64.b64encode(f.read()).decode('utf-8')
+            pdf_data = base64.b64encode(f.read()).decode('utf-8')
 
         return jsonify({
-    'success':  True,
-    'summary':  summary,
-    'pdf_file': os.path.basename(pdf_path),
-    'pdf_data': pdf_data
+            'success':  True,
+            'summary':  summary,
+            'pdf_file': os.path.basename(pdf_path),
+            'pdf_data': pdf_data
         })
 
     return jsonify({'error': 'Invalid mode.'}), 400
@@ -123,7 +115,7 @@ def download(filename):
             as_attachment=True,
             download_name=filename
         )
-    return "File not found — the server may have restarted. Please run the analysis again.", 404
+    return "File not found — please run the analysis again.", 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
