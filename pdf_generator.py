@@ -12,6 +12,13 @@ import matplotlib.pyplot as plt
 import io
 import yfinance as yf
 
+import requests
+_session = requests.Session()
+_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+})
+yf.base._get_session = lambda: _session
+
 DARK   = colors.HexColor('#0D1B2A')
 ACCENT = colors.HexColor('#1F6FEB')
 GREEN  = colors.HexColor('#1A7F4B')
