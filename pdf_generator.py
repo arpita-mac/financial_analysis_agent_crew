@@ -12,12 +12,7 @@ import matplotlib.pyplot as plt
 import io
 import yfinance as yf
 
-import requests
-_session = requests.Session()
-_session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-})
-yf.base._get_session = lambda: _session
+
 
 DARK   = colors.HexColor('#0D1B2A')
 ACCENT = colors.HexColor('#1F6FEB')
@@ -84,7 +79,11 @@ def fmt_currency(amount, symbol='$'):
     
 def get_stock_metrics(ticker: str, user_currency: str = 'USD'):
     try:
-        info           = yf.Ticker(ticker).info
+        import requests as _req
+        _s = _req.Session()
+        _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        stock = yf.Ticker(ticker, session=_s)
+        info  = stock.info
         stock_currency = info.get('currency', 'USD')
         symbol         = get_symbol(user_currency)
         fx             = get_fx_rate(stock_currency, user_currency)
@@ -135,8 +134,11 @@ def extract_risk(text: str):
 
 def price_history_chart(ticker: str, width=6.5, height=2.8, user_currency: str = 'USD'):
     try:
-        stock          = yf.Ticker(ticker)
-        hist           = stock.history(period="1y")
+        import requests as _req
+        _s = _req.Session()
+        _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        stock = yf.Ticker(ticker, session=_s)
+        hist  = stock.history(period="1y")
         stock_currency = stock.info.get('currency', 'USD')
         fx             = get_fx_rate(stock_currency, user_currency)
         symbol         = get_symbol(user_currency)
