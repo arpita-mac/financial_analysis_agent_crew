@@ -44,8 +44,17 @@ def analyze():
         if not validate_ticker(ticker):
             return jsonify({'error': f"'{ticker}' is not a valid stock ticker."}), 400
 
-        result   = run_analysis(ticker)
-        pdf_path = generate_pdf(ticker, result, user_currency)
+       import requests as _req
+       import yfinance as yf
+
+        _s = _req.Session()
+        _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+
+    result   = run_analysis(ticker)
+    stock    = yf.Ticker(ticker, session=_s)
+    info     = stock.info
+    hist     = stock.history(period="1y")
+    pdf_path = generate_pdf(ticker, result, user_currency, prefetched_info=info, prefetched_hist=hist)
 
         analysis_store[ticker] = {
             'result':   result,
