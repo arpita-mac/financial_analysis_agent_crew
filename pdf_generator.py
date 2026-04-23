@@ -77,16 +77,15 @@ def fmt_currency(amount, symbol='$'):
     if amount >= 1e6:  return f"{s}{amount/1e6:.1f}M"
     return f"{s}{amount:,.0f}"
     
-def get_stock_metrics(ticker: str, user_currency: str = 'USD'):
+def get_stock_metrics(ticker: str, user_currency: str = 'USD', prefetched_info=None):
     try:
-        import requests as _req
-        _s = _req.Session()
-        _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        stock = yf.Ticker(ticker, session=_s)
-        info  = stock.info
-        stock_currency = info.get('currency', 'USD')
-        symbol         = get_symbol(user_currency)
-        fx             = get_fx_rate(stock_currency, user_currency)
+        if prefetched_info:
+            info = prefetched_info
+        else:
+            import requests as _req
+            _s = _req.Session()
+            _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            info = yf.Ticker(ticker, session=_s).info
 
         def to_user(val):
             if not val: return 0
@@ -132,16 +131,22 @@ def extract_risk(text: str):
     if 'LOW RISK'  in t or 'RISK: LOW'  in t: return 'LOW',  GREEN
     return 'MEDIUM', AMBER
 
-def price_history_chart(ticker: str, width=6.5, height=2.8, user_currency: str = 'USD'):
+def price_history_chart(ticker: str, width=6.5, height=2.8, user_currency: str = 'USD', prefetched_hist=None):
     try:
-        import requests as _req
-        _s = _req.Session()
-        _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        stock = yf.Ticker(ticker, session=_s)
-        hist  = stock.history(period="1y")
-        stock_currency = stock.info.get('currency', 'USD')
-        fx             = get_fx_rate(stock_currency, user_currency)
-        symbol         = get_symbol(user_currency)
+        if prefetched_hist is not None and not prefetched_hist.empty:
+            hist = prefetched_hist
+            stock_currency = 'USD'
+            fx     = get_fx_rate('USD', user_currency)
+            symbol = get_symbol(user_currency)
+        else:
+            import requests as _req
+            _s = _req.Session()
+            _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            stock          = yf.Ticker(ticker, session=_s)
+            hist           = stock.history(period="1y")
+            stock_currency = stock.info.get('currency', 'USD')
+            fx             = get_fx_rate(stock_currency, user_currency)
+            symbol         = get_symbol(user_currency)
 
         if hist.empty:
             return None
@@ -321,8 +326,9 @@ def render_body(text, story, styles):
             story.append(Paragraph(clean, styles['body']))
 
 
-def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD'):
-    output_dir = "output"
+def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD', prefetched_info=None, prefetched_hist=None):    output_dir = "output"
+    m = get_stock_metrics(ticker, user_currency, prefetched_info=prefetched_info)
+    hist_buf = price_history_chart(ticker, user_currency=user_currency, prefetched_hist=prefetched_hist)
     os.makedirs(output_dir, exist_ok=True)
     ts     = datetime.now().strftime("%Y%m%d_%H%M%S")
     fn     = f"{output_dir}/{ticker}_analysis_{ts}.pdf"
