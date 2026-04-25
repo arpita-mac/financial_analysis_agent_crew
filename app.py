@@ -26,9 +26,7 @@ def get_user_currency(req_obj):
 
 def fetch_stock_data(ticker: str):
     try:
-        s = req.Session()
-        s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        stock = yf.Ticker(ticker, session=s)
+        stock = yf.Ticker(ticker)
         info  = stock.info
         hist  = stock.history(period="1y")
         print(f"✅ Fetched data for {ticker}: price={info.get('currentPrice')}, hist_rows={len(hist)}")
