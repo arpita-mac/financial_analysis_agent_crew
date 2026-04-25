@@ -31,8 +31,10 @@ def fetch_stock_data(ticker: str):
         stock = yf.Ticker(ticker, session=s)
         info  = stock.info
         hist  = stock.history(period="1y")
+        print(f"✅ Fetched data for {ticker}: price={info.get('currentPrice')}, hist_rows={len(hist)}")
         return info, hist
-    except:
+    except Exception as e:
+        print(f"❌ fetch_stock_data failed for {ticker}: {str(e)}")
         return {}, None
 
 app = Flask(__name__)
