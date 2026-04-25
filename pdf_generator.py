@@ -11,8 +11,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import io
 import yfinance as yf
-
-
+import requests as _req
 
 DARK   = colors.HexColor('#0D1B2A')
 ACCENT = colors.HexColor('#1F6FEB')
@@ -26,20 +25,21 @@ WHITE  = colors.white
 CHART_COLORS = ['#1F6FEB', '#F72585', '#4CC9F0', '#7209B7', '#3A0CA3']
 
 LOCALE_CURRENCY_MAP = {
-    'INR': '₹',
-    'KRW': '₩',
-    'USD': '$',
-    'GBP': '£',
-    'EUR': '€',
-    'JPY': '¥',
-    'CNY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'SGD': 'S$',
+    'INR': '₹', 'KRW': '₩', 'USD': '$', 'GBP': '£',
+    'EUR': '€', 'JPY': '¥', 'CNY': '¥', 'AUD': 'A$',
+    'CAD': 'C$', 'SGD': 'S$',
+}
+
+CURRENCY_TEXT_MAP = {
+    '₹': 'INR ', '₩': 'KRW ', '¥': 'JPY ', '£': 'GBP ',
+    '€': 'EUR ', 'A$': 'AUD ', 'C$': 'CAD ', 'S$': 'SGD ', '$': '$',
 }
 
 def get_symbol(currency: str) -> str:
     return LOCALE_CURRENCY_MAP.get(currency, '$')
+
+def pdf_symbol(symbol: str) -> str:
+    return CURRENCY_TEXT_MAP.get(symbol, symbol)
 
 def get_fx_rate(from_currency: str, to_currency: str) -> float:
     if not from_currency or from_currency == to_currency:
@@ -53,22 +53,6 @@ def get_fx_rate(from_currency: str, to_currency: str) -> float:
     except:
         return 1.0
 
-CURRENCY_TEXT_MAP = {
-    '₹': 'INR ',
-    '₩': 'KRW ',
-    '¥': 'JPY ',
-    '£': 'GBP ',
-    '€': 'EUR ',
-    'A$': 'AUD ',
-    'C$': 'CAD ',
-    'S$': 'SGD ',
-    '$': '$',
-}
-
-def pdf_symbol(symbol: str) -> str:
-    """Convert unicode currency symbols to PDF-safe text."""
-    return CURRENCY_TEXT_MAP.get(symbol, symbol)
-
 def fmt_currency(amount, symbol='$'):
     if not amount: return 'N/A'
     s = pdf_symbol(symbol)
@@ -76,16 +60,19 @@ def fmt_currency(amount, symbol='$'):
     if amount >= 1e9:  return f"{s}{amount/1e9:.1f}B"
     if amount >= 1e6:  return f"{s}{amount/1e6:.1f}M"
     return f"{s}{amount:,.0f}"
-    
+
 def get_stock_metrics(ticker: str, user_currency: str = 'USD', prefetched_info=None):
     try:
         if prefetched_info:
             info = prefetched_info
         else:
-            import requests as _req
-            _s = _req.Session()
-            _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-            info = yf.Ticker(ticker, session=_s).info
+            s = _req.Session()
+            s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            info = yf.Ticker(ticker, session=s).info
+
+        stock_currency = info.get('currency', 'USD')
+        symbol         = get_symbol(user_currency)
+        fx             = get_fx_rate(stock_currency, user_currency)
 
         def to_user(val):
             if not val: return 0
@@ -131,24 +118,23 @@ def extract_risk(text: str):
     if 'LOW RISK'  in t or 'RISK: LOW'  in t: return 'LOW',  GREEN
     return 'MEDIUM', AMBER
 
-def price_history_chart(ticker: str, width=6.5, height=2.8, user_currency: str = 'USD', prefetched_hist=None):
+def price_history_chart(ticker: str, width=6.5, height=2.8,
+                        user_currency: str = 'USD', prefetched_hist=None):
     try:
+        symbol = get_symbol(user_currency)
+
         if prefetched_hist is not None and not prefetched_hist.empty:
             hist = prefetched_hist
-            stock_currency = 'USD'
-            fx     = get_fx_rate('USD', user_currency)
-            symbol = get_symbol(user_currency)
+            fx   = get_fx_rate('USD', user_currency)
         else:
-            import requests as _req
-            _s = _req.Session()
-            _s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-            stock          = yf.Ticker(ticker, session=_s)
+            s     = _req.Session()
+            s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            stock          = yf.Ticker(ticker, session=s)
             hist           = stock.history(period="1y")
             stock_currency = stock.info.get('currency', 'USD')
             fx             = get_fx_rate(stock_currency, user_currency)
-            symbol         = get_symbol(user_currency)
 
-        if hist.empty:
+        if hist is None or hist.empty:
             return None
 
         dates  = hist.index
@@ -167,10 +153,8 @@ def price_history_chart(ticker: str, width=6.5, height=2.8, user_currency: str =
         line_color  = '#1A7F4B' if pct_change >= 0 else '#CF2B2B'
         sign        = '+' if pct_change >= 0 else ''
 
-        ax.set_title(
-            f"{ticker} — 12 Month Price History  ({sign}{pct_change:.1f}%)",
-            fontsize=12, fontweight='bold', color='#0D1B2A', pad=10
-        )
+        ax.set_title(f"{ticker} — 12 Month Price History  ({sign}{pct_change:.1f}%)",
+                     fontsize=12, fontweight='bold', color='#0D1B2A', pad=10)
         ax.set_ylabel(f'Price ({user_currency})', fontsize=9, color='#6B7280')
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -201,7 +185,7 @@ def price_gauge_img(price, low, high, ticker, symbol='$', width=5.5, height=1.8)
     fig.patch.set_facecolor('#F4F6F9')
     ax.set_facecolor('#F4F6F9')
     ax.barh([0], [high - low], left=low, height=0.3, color='#E5E7EB', edgecolor='white')
-    pct = (price - low) / (high - low) if (high - low) else 0.5
+    pct        = (price - low) / (high - low) if (high - low) else 0.5
     fill_color = '#1A7F4B' if pct > 0.6 else ('#D97706' if pct > 0.35 else '#CF2B2B')
     ax.barh([0], [price - low], left=low, height=0.3, color=fill_color, edgecolor='white')
     ax.axvline(price, color='#0D1B2A', linewidth=2.5)
@@ -326,9 +310,9 @@ def render_body(text, story, styles):
             story.append(Paragraph(clean, styles['body']))
 
 
-def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD', prefetched_info=None, prefetched_hist=None):    output_dir = "output"
-    m = get_stock_metrics(ticker, user_currency, prefetched_info=prefetched_info)
-    hist_buf = price_history_chart(ticker, user_currency=user_currency, prefetched_hist=prefetched_hist)
+def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD',
+                 prefetched_info=None, prefetched_hist=None):
+    output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
     ts     = datetime.now().strftime("%Y%m%d_%H%M%S")
     fn     = f"{output_dir}/{ticker}_analysis_{ts}.pdf"
@@ -338,7 +322,7 @@ def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD', 
                             rightMargin=0.85*inch, leftMargin=0.85*inch,
                             topMargin=0.75*inch,   bottomMargin=0.75*inch)
     S   = get_styles()
-    m   = get_stock_metrics(ticker, user_currency)
+    m   = get_stock_metrics(ticker, user_currency, prefetched_info=prefetched_info)
     rec,  rec_color  = extract_recommendation(analysis_result)
     risk, risk_color = extract_risk(analysis_result)
 
@@ -382,10 +366,10 @@ def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD', 
 
     if m:
         cards = [
-            metric_card('Current Price',  f"{pdf_symbol(symbol)}{m.get('price',0):,.2f}",      S),
-            metric_card('Market Cap',     m.get('market_cap_fmt', 'N/A'),           S),
-            metric_card('P/E Ratio',      f"{m.get('pe_ratio',0):.1f}",            S),
-            metric_card('Profit Margin',  f"{m.get('profit_margin',0):.1f}%",      S),
+            metric_card('Current Price',  f"{pdf_symbol(symbol)}{m.get('price',0):,.2f}", S),
+            metric_card('Market Cap',     m.get('market_cap_fmt', 'N/A'),                  S),
+            metric_card('P/E Ratio',      f"{m.get('pe_ratio',0):.1f}",                   S),
+            metric_card('Profit Margin',  f"{m.get('profit_margin',0):.1f}%",             S),
         ]
         row_tbl = Table([cards], colWidths=[1.55*inch]*4, hAlign='CENTER')
         row_tbl.setStyle(TableStyle([
@@ -396,11 +380,12 @@ def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD', 
         story.append(Spacer(1, 0.15*inch))
 
     if m and m.get('52w_high') and m.get('52w_low'):
-        buf = price_gauge_img(m['price'], m['52w_low'], m['52w_high'], ticker, symbol)
+        buf = price_gauge_img(m['price'], m['52w_low'], m['52w_high'], ticker, pdf_symbol(symbol))
         story.append(Image(buf, width=6.5*inch, height=1.9*inch))
         story.append(Spacer(1, 0.15*inch))
 
-    hist_buf = price_history_chart(ticker, user_currency=user_currency)
+    hist_buf = price_history_chart(ticker, user_currency=user_currency,
+                                   prefetched_hist=prefetched_hist)
     if hist_buf:
         story.append(section_header("📈  12 Month Price History", S))
         story.append(Spacer(1, 0.12*inch))
@@ -424,7 +409,8 @@ def generate_pdf(ticker: str, analysis_result: str, user_currency: str = 'USD', 
     return fn
 
 
-def generate_comparison_pdf(results: dict, user_currency: str = 'USD'):
+def generate_comparison_pdf(results: dict, user_currency: str = 'USD',
+                             prefetched_data: dict = None):
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
     ts      = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -435,8 +421,12 @@ def generate_comparison_pdf(results: dict, user_currency: str = 'USD'):
     doc = SimpleDocTemplate(fn, pagesize=letter,
                             rightMargin=0.85*inch, leftMargin=0.85*inch,
                             topMargin=0.75*inch,   bottomMargin=0.75*inch)
-    S       = get_styles()
-    metrics = {t: get_stock_metrics(t, user_currency) for t in tickers}
+    S = get_styles()
+
+    metrics = {}
+    for t in tickers:
+        pre_info = prefetched_data[t]['info'] if prefetched_data and t in prefetched_data else None
+        metrics[t] = get_stock_metrics(t, user_currency, prefetched_info=pre_info)
 
     story = []
 
@@ -463,12 +453,13 @@ def generate_comparison_pdf(results: dict, user_currency: str = 'USD'):
     col_w   = 6.5 / (len(tickers) + 1)
     hdr_row = ['Metric'] + tickers
     rows = [
-        ['Price'] + [f"{pdf_symbol(symbol)}{metrics[t].get('price',0):,.2f}" for t in tickers],        ['Market Cap']     + [metrics[t].get('market_cap_fmt','N/A')            for t in tickers],
-        ['P/E Ratio']      + [f"{metrics[t].get('pe_ratio',0):.1f}"            for t in tickers],
-        ['Profit Margin']  + [f"{metrics[t].get('profit_margin',0):.1f}%"      for t in tickers],
-        ['Revenue']        + [metrics[t].get('revenue_fmt','N/A')              for t in tickers],
-        ['Recommendation'] + [extract_recommendation(results[t])[0]            for t in tickers],
-        ['Risk Level']     + [extract_risk(results[t])[0]                      for t in tickers],
+        ['Price']          + [f"{pdf_symbol(symbol)}{metrics[t].get('price',0):,.2f}" for t in tickers],
+        ['Market Cap']     + [metrics[t].get('market_cap_fmt','N/A')                   for t in tickers],
+        ['P/E Ratio']      + [f"{metrics[t].get('pe_ratio',0):.1f}"                   for t in tickers],
+        ['Profit Margin']  + [f"{metrics[t].get('profit_margin',0):.1f}%"             for t in tickers],
+        ['Revenue']        + [metrics[t].get('revenue_fmt','N/A')                     for t in tickers],
+        ['Recommendation'] + [extract_recommendation(results[t])[0]                   for t in tickers],
+        ['Risk Level']     + [extract_risk(results[t])[0]                             for t in tickers],
     ]
 
     tbl_styles = [
@@ -514,15 +505,16 @@ def generate_comparison_pdf(results: dict, user_currency: str = 'USD'):
             story.append(Image(buf, width=6*inch, height=2.7*inch))
             story.append(Spacer(1, 0.15*inch))
 
-    add_chart('pe_ratio',      'P/E Ratio Comparison',                    'P/E Ratio')
-    add_chart('profit_margin', 'Profit Margin Comparison (%)',             'Profit Margin (%)')
-    add_chart('revenue_b',     f'Revenue Comparison ({user_currency} B)',  f'Revenue ({symbol}B)')
-    add_chart('market_cap_b',  f'Market Cap Comparison ({user_currency} B)', f'Market Cap ({symbol}B)')
+    add_chart('pe_ratio',      'P/E Ratio Comparison',                      'P/E Ratio')
+    add_chart('profit_margin', 'Profit Margin Comparison (%)',               'Profit Margin (%)')
+    add_chart('revenue_b',     f'Revenue Comparison ({user_currency} B)',    f'Revenue ({pdf_symbol(symbol)}B)')
+    add_chart('market_cap_b',  f'Market Cap Comparison ({user_currency} B)', f'Market Cap ({pdf_symbol(symbol)}B)')
 
     story.append(section_header("📈  12 Month Price History", S))
     story.append(Spacer(1, 0.15*inch))
     for ticker in tickers:
-        hist_buf = price_history_chart(ticker, user_currency=user_currency)
+        pre_hist = prefetched_data[ticker]['hist'] if prefetched_data and ticker in prefetched_data else None
+        hist_buf = price_history_chart(ticker, user_currency=user_currency, prefetched_hist=pre_hist)
         if hist_buf:
             story.append(Image(hist_buf, width=6.5*inch, height=2.8*inch))
             story.append(Spacer(1, 0.12*inch))
