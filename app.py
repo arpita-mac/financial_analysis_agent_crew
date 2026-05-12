@@ -25,22 +25,17 @@ def get_user_currency(req_obj):
         return 'USD'
 
 def fetch_stock_data(ticker: str):
-    import time
-    for attempt in range(3):
-        try:
-            stock = yf.Ticker(ticker)
-            info  = stock.info
-            hist  = stock.history(period="1y")
-            if info and (info.get('currentPrice') or info.get('regularMarketPrice')):
-                print(f"✅ Fetched data for {ticker} on attempt {attempt + 1}")
-                return info, hist
-            print(f"⚠️ Empty data for {ticker} on attempt {attempt + 1}, retrying...")
-            time.sleep(5)
-        except Exception as e:
-            print(f"❌ fetch_stock_data attempt {attempt + 1} failed for {ticker}: {str(e)}")
-            time.sleep(10)
-    print(f"❌ All attempts failed for {ticker}")
-    return {}, None
+    try:
+        from curl_cffi import requests as curl_requests
+        session = curl_requests.Session(impersonate="chrome")
+        stock = yf.Ticker(ticker, session=session)
+        info  = stock.info
+        hist  = stock.history(period="1y")
+        print(f"✅ Fetched data for {ticker}: price={info.get('currentPrice')}")
+        return info, hist
+    except Exception as e:
+        print(f"❌ fetch_stock_data failed for {ticker}: {str(e)}")
+        return {}, None
 
 app = Flask(__name__)
 analysis_store = {}
