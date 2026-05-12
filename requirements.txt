@@ -10,3 +10,4 @@ flask
 litellm
 babel
 tiktoken --only-binary=all
+curl-cffi
